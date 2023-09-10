@@ -4,7 +4,7 @@ import os
 import logger as custom_logging
 from dotenv import load_dotenv
 
-DEBUG = True
+DEBUG = False
 common_params = dict()
 
 
