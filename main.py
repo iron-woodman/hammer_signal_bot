@@ -7,18 +7,22 @@ import logger as custom_logging
 from binance_api import futures_list
 from websocket_handler import QueueManager
 from telegram_api import send_signal, send_signals_pack
+from avg_volumes_updater import update_avg_volumes_by_time
 
 
 def main():
-    custom_logging.info(f"Bot started.")
+    custom_logging.info(f"HammerBot started.")
     custom_logging.info(f"Coin list loaded ({len(futures_list)})")
     print(f"Coin list count {len(futures_list)}.")
     send_signal(f'HammerBot started. Coins count: {len(futures_list)}. TF:{TIMEFRAMES}.')
     if len(futures_list) == 0:
         exit(1)
-
+    # send tlg signals thread
     tlg_message_sender = threading.Thread(target=send_signals_pack)
     tlg_message_sender.start()
+    # update avg volumes thread
+    avg_volumes_updater = threading.Thread(target=update_avg_volumes_by_time)
+    avg_volumes_updater.start()
 
     manager = QueueManager(symbols=futures_list, timeframes=TIMEFRAMES)
     manager.join()

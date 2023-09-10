@@ -4,14 +4,15 @@ import json
 import os
 import time
 from binance import Client
-
+from datetime import datetime
 from binance_api import futures_list
 from config_handler import TIMEFRAMES, AVG_VOLUMES_FILE, BINANCE_API_KEY, BINANCE_Secret_KEY
+import logger as custom_logging
+
 
 THREAD_CNT = 2 # 3 потока на ядро
 PAUSE = 5 # пауза между запросами истории
 DEBUG = False# флаг вывода отладочных сообщений во время разработки
-
 
 def GetVolumeListAndAvg(bars):
     _ = []
@@ -60,6 +61,7 @@ def load_history_bars(task):
                 st_time = "20 day ago UTC"
             else:
                 print('Unknows timeframe:', timeframe)
+                custom_logging.error(f'load history bars error: unknown timeframe "{timeframe}"')
                 continue
 
             bars = []
@@ -80,6 +82,7 @@ def load_history_bars(task):
         return result
     except Exception as e:
         print("Exception when calling load_history_bars: ", e)
+
         return None
 
 
@@ -94,9 +97,13 @@ def load_history_bars_end(responce_list):
         with open(AVG_VOLUMES_FILE, 'w', encoding='cp1251') as f:
             json.dump(data, f, ensure_ascii=False, indent=4, separators=(',', ': '))
             print('Avg volumes stored to file')
+            custom_logging.info('Avg volumes stored to file')
+
+
         avg_volumes = load_avg_volume_params(AVG_VOLUMES_FILE)
     except Exception as e:
         print("Avg volumes loading exception:", e)
+        custom_logging.error(f'Avg volumes loading exception: {e}')
 
 
 def load_avg_volume_params(file):
@@ -121,12 +128,14 @@ def update_avg_volumes(timeframes):
         tasks.append((symbol, BINANCE_API_KEY, BINANCE_Secret_KEY, timeframes))
 
     try:
+        custom_logging.info('AVG volumes update started...')
         with multiprocessing.Pool(multiprocessing.cpu_count() * THREAD_CNT) as pool:
             pool.map_async(load_history_bars, tasks, callback=load_history_bars_end)
             pool.close()
             pool.join()
     except Exception as ex:
         print("update_avg_volumes exception:", ex)
+        custom_logging.error(f"update_avg_volumes exception: {ex}")
         return
 
 
@@ -141,6 +150,13 @@ def load_futures_list():
     return futures
 
 
+def update_avg_volumes_by_time():
+    while True:
+        if datetime.now().hour == 2 and datetime.now().minute == 13:
+            update_avg_volumes(TIMEFRAMES)
+        time.sleep(60)
+
+
 def main():
 
     if os.path.isfile(AVG_VOLUMES_FILE) is False:  # avg volumes file don't exists
@@ -148,6 +164,9 @@ def main():
         update_avg_volumes(TIMEFRAMES)
     elif os.path.getsize(AVG_VOLUMES_FILE) == 0:
         update_avg_volumes(TIMEFRAMES)
+
+
+
 
 
 if __name__ == '__main__':
