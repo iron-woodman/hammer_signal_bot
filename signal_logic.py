@@ -46,6 +46,10 @@ def detect_hammer_patterns(open, high, low, close, timeframe):
         shadow_limit = 0.02
     elif timeframe == "1m":
         shadow_limit = 0.003
+    elif timeframe == "15m":
+        shadow_limit = 0.003
+    elif timeframe == "5m":
+        shadow_limit = 0.003
 
     try:
 
