@@ -1,27 +1,10 @@
 ## -*- coding: utf-8 -*-
-import json
 from telegram_message import TLGMessage
 import logger as custom_logging
-from config_handler import AVG_VOLUMES_FILE
-
-
-AVG_VOLUMES = dict()
-
-
-def load_avg_volumes(file):
-    global AVG_VOLUMES
-    AVG_VOLUMES = dict()
-    try:
-        with open(file, 'r', encoding='cp1251') as f:
-            AVG_VOLUMES = json.load(f)
-        print('avg volumes loaded')
-    except Exception as e:
-        print("Load_avg_volume_params exception:", e)
-        custom_logging.error(f"Load_avg_volume_params exception: {e}")
 
 
 def get_volume_ratio(volume, timeframe, symbol):
-    global AVG_VOLUMES
+    from avg_volumes_updater import AVG_VOLUMES
     avg_volume = 0.0
     ratio = 0.0
     if symbol in AVG_VOLUMES:
@@ -155,4 +138,3 @@ def check_bar_for_signal(symbol, open_, high, low, close, volume, timeframe):
     return signal
 
 
-load_avg_volumes(AVG_VOLUMES_FILE)

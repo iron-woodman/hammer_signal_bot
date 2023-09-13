@@ -5,14 +5,38 @@ import os
 import time
 from binance import Client
 from datetime import datetime
+
+from binance.enums import HistoricalKlinesType
+
 from binance_api import futures_list
 from config_handler import TIMEFRAMES, AVG_VOLUMES_FILE, BINANCE_API_KEY, BINANCE_Secret_KEY
+# from signal_logic import load_avg_volumes
 import logger as custom_logging
-
 
 THREAD_CNT = 2 # 3 потока на ядро
 PAUSE = 5 # пауза между запросами истории
 DEBUG = False# флаг вывода отладочных сообщений во время разработки
+
+
+AVG_VOLUMES = dict()
+
+
+def load_avg_volumes(file):
+    global AVG_VOLUMES
+    AVG_VOLUMES = dict()
+    if os.path.isfile(file) is False: # file not exists
+        return
+    elif os.path.getsize(file) == 0:
+        return
+    try:
+        with open(file, 'r', encoding='cp1251') as f:
+            AVG_VOLUMES = json.load(f)
+        print('avg volumes loaded')
+    except Exception as e:
+        print("Load_avg_volume_params exception:", e)
+        custom_logging.error(f"Load_avg_volumes exception: {e}")
+
+
 
 def GetVolumeListAndAvg(bars):
     _ = []
@@ -66,7 +90,8 @@ def load_history_bars(task):
 
             bars = []
             try:
-                bars = client.get_historical_klines(pair, timeframe, st_time)
+                bars = client.get_historical_klines(pair, timeframe, st_time
+                                                    , klines_type=HistoricalKlinesType.FUTURES)
             except Exception as e:
                 print(pair,':', e)
 
@@ -82,7 +107,6 @@ def load_history_bars(task):
         return result
     except Exception as e:
         print("Exception when calling load_history_bars: ", e)
-
         return None
 
 
@@ -98,27 +122,26 @@ def load_history_bars_end(responce_list):
             json.dump(data, f, ensure_ascii=False, indent=4, separators=(',', ': '))
             print('Avg volumes stored to file')
             custom_logging.info('Avg volumes stored to file')
+        load_avg_volumes(AVG_VOLUMES_FILE)  # update data
 
-
-        avg_volumes = load_avg_volume_params(AVG_VOLUMES_FILE)
     except Exception as e:
         print("Avg volumes loading exception:", e)
         custom_logging.error(f'Avg volumes loading exception: {e}')
 
 
-def load_avg_volume_params(file):
-    if os.path.isfile(file) is False: # file not exists
-        print(f'Avg volumes file  "{file}" not exists.')
-        return None
-    pairs = []
-    try:
-        with open(file, 'r', encoding='cp1251') as f:
-            avg_volumes = json.load(f)
-        print('Volumes loaded.')
-        return avg_volumes
-    except Exception as e:
-        print("load_avg_volume_params exception:", e)
-        return None
+# def load_avg_volume_params(file):
+#     if os.path.isfile(file) is False: # file not exists
+#         print(f'Avg volumes file  "{file}" not exists.')
+#         return None
+#     pairs = []
+#     try:
+#         with open(file, 'r', encoding='cp1251') as f:
+#             data = json.load(f)
+#         print('Volumes loaded.')
+#         return data
+#     except Exception as e:
+#         print("load_avg_volume_params exception:", e)
+#         return None
 
 
 def update_avg_volumes(timeframes):
@@ -164,9 +187,6 @@ def main():
         update_avg_volumes(TIMEFRAMES)
     elif os.path.getsize(AVG_VOLUMES_FILE) == 0:
         update_avg_volumes(TIMEFRAMES)
-
-
-
 
 
 if __name__ == '__main__':
